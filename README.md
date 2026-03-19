@@ -14,7 +14,7 @@
 <p align="center"><strong>MCP server + TypeScript client for the <a href="https://envia.com">Envia.com</a> shipping API.</strong></p>
 
 <p align="center">
-  Quote, label, track, and cancel shipments across <strong>150+ carriers in 16 countries</strong> — from AI agents or your own code.
+  Quote, label, track, and cancel shipments across <strong>170+ carriers in 18 countries</strong> — from AI agents or your own code.
 </p>
 
 ---
@@ -53,7 +53,9 @@
 | Spain | ES | 16 | Correos, DHL, FedEx, GLS, SEUR, UPS |
 | India | IN | 9 | BlueDart, Delhivery, FedEx, Aramex, Xpressbees |
 | France | FR | 4 | Chronopost, Mondial Relay, UPS |
+| Italy | IT | 4 | Poste Italiane, BRT, InPost, UPS |
 | Australia | AU | 3 | Aramex, FedEx, Sendle |
+| Hong Kong | HK | 1 | FedEx |
 | Japan | JP | 1 | — |
 | China | CN | 1 | — |
 
