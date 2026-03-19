@@ -14,7 +14,7 @@
 <p align="center"><strong>MCP server + TypeScript client for the <a href="https://envia.com">Envia.com</a> shipping API.</strong></p>
 
 <p align="center">
-  Quote, label, track, and cancel shipments across <strong>34+ Mexican carriers</strong> — from AI agents or your own code.
+  Quote, label, track, and cancel shipments across <strong>120+ carriers in 8 countries</strong> — from AI agents or your own code.
 </p>
 
 ---
@@ -28,6 +28,21 @@
 | **MCP Server** | `envia-mcp` | AI agents (Claude Code, Claude Desktop, Cursor) interact with Envia via natural language |
 | **Client Library** | `envia-mcp/client` | Node.js/TypeScript apps call the Envia API directly with full type safety |
 | **Type Definitions** | `envia-mcp/types` | Zod schemas and TypeScript types for all API entities |
+
+### Supported Countries
+
+| Country | Code | Carriers | Notable Carriers |
+|---------|:----:|:--------:|-----------------|
+| Mexico | MX | 34 | DHL, FedEx, Estafeta, Paquetexpress, UPS |
+| United States | US | 33 | FedEx, UPS, USPS, DHL, Sendle, LSO |
+| Colombia | CO | 16 | FedEx, DHL, Coordinadora, Servientrega, TCC |
+| Argentina | AR | 12 | — |
+| Brazil | BR | 11 | Correios, FedEx, DHL, Jadlog, Loggi |
+| Chile | CL | 10 | — |
+| Guatemala | GT | 7 | — |
+| Peru | PE | 1 | — |
+
+> Envia adds carriers and countries over time. Use `envia_get_carriers` to get the current list.
 
 ---
 
@@ -101,7 +116,7 @@ The server exposes **7 tools** that AI agents can call:
 | `envia_create_label` | Purchase a shipping label (charges USD balance) | Yes |
 | `envia_track` | Track one or more shipments by tracking number | |
 | `envia_cancel` | Cancel a shipment and request refund | Yes |
-| `envia_validate_zipcode` | Validate a Mexican postal code and get address info | |
+| `envia_validate_zipcode` | Validate a postal code and get address info | |
 | `envia_get_carriers` | List available carriers for a country | |
 | `envia_get_services` | List services for a specific carrier | |
 
@@ -161,7 +176,7 @@ Things that will bite you if you're not careful:
 
 | Gotcha | Details |
 |--------|---------|
-| **`phone_code` differs** | `"MX"` for rate quotes, `"52"` for labels |
+| **`phone_code` differs** | Country code string for quotes (e.g. `"MX"`), dialing code for labels (e.g. `"52"`) |
 | **Quotes are MXN, labels are USD** | Prepaid balance is denominated in USD |
 | **Labels are NOT idempotent** | Duplicate call = double charge, different tracking number |
 | **Sandbox geocodes is DOWN** | Always use production `geocodes.envia.com` |

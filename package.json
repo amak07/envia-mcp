@@ -1,7 +1,7 @@
 {
   "name": "envia-mcp",
   "version": "0.1.0",
-  "description": "MCP server and client library for Envia.com shipping API — quote, label, track, and cancel shipments across 34+ Mexican carriers",
+  "description": "MCP server and client library for Envia.com shipping API — quote, label, track, and cancel shipments across 120+ carriers in the Americas",
   "type": "module",
   "main": "dist/index.js",
   "exports": {
