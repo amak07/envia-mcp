@@ -15,6 +15,7 @@ import {
   DEFAULT_SHIPPING_URL,
   DEFAULT_QUERIES_URL,
   DEFAULT_GEOCODES_URL,
+  PRODUCTION_SHIPPING_URL,
 } from './constants.js';
 
 const apiKey = process.env.ENVIA_API_KEY;
@@ -29,9 +30,10 @@ const server = new McpServer({
   version: '0.1.0',
 });
 
+const shippingUrl = process.env.ENVIA_SHIPPING_URL ?? DEFAULT_SHIPPING_URL;
 const client = new EnviaClient({
   apiKey,
-  shippingUrl: process.env.ENVIA_SHIPPING_URL ?? DEFAULT_SHIPPING_URL,
+  shippingUrl,
   queriesUrl: process.env.ENVIA_QUERIES_URL ?? DEFAULT_QUERIES_URL,
   geocodesUrl: process.env.ENVIA_GEOCODES_URL ?? DEFAULT_GEOCODES_URL,
 });
@@ -40,10 +42,12 @@ registerAllTools(server, client);
 registerAllResources(server);
 registerAllPrompts(server);
 
+const isProduction = shippingUrl === PRODUCTION_SHIPPING_URL;
+
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('Envia MCP Server v0.1.0 running on stdio');
+  console.error(`Envia MCP Server v0.1.0 running on stdio (${isProduction ? 'PRODUCTION' : 'sandbox'})`);
 }
 
 main().catch((error: unknown) => {

@@ -67,6 +67,8 @@
 
 ### As an MCP Server
 
+> The server connects to **Envia's sandbox** by default — no real charges, safe to experiment.
+
 Add to your Claude Code config (`.mcp.json`):
 
 ```json
@@ -76,7 +78,7 @@ Add to your Claude Code config (`.mcp.json`):
       "command": "node",
       "args": ["/path/to/envia-mcp/dist/index.js"],
       "env": {
-        "ENVIA_API_KEY": "your-api-key"
+        "ENVIA_API_KEY": "your-sandbox-api-key"
       }
     }
   }
@@ -92,7 +94,7 @@ Or, if installed globally via npm:
       "command": "npx",
       "args": ["envia-mcp"],
       "env": {
-        "ENVIA_API_KEY": "your-api-key"
+        "ENVIA_API_KEY": "your-sandbox-api-key"
       }
     }
   }
@@ -104,10 +106,11 @@ Or, if installed globally via npm:
 ```typescript
 import { EnviaClient } from 'envia-mcp/client';
 
+// Sandbox (default — safe for testing)
 const client = new EnviaClient({
   apiKey: process.env.ENVIA_API_KEY!,
-  shippingUrl: 'https://api.envia.com',
-  queriesUrl: 'https://queries.envia.com',
+  shippingUrl: 'https://api-test.envia.com',
+  queriesUrl: 'https://queries-test.envia.com',
   geocodesUrl: 'https://geocodes.envia.com',
 });
 
@@ -209,11 +212,42 @@ The MCP server reads configuration from environment variables:
 | Variable | Required | Default | Description |
 |----------|:--------:|---------|-------------|
 | `ENVIA_API_KEY` | Yes | — | Your Envia.com API key |
-| `ENVIA_SHIPPING_URL` | | `https://api.envia.com` | Shipping API base URL |
-| `ENVIA_QUERIES_URL` | | `https://queries.envia.com` | Queries API base URL |
+| `ENVIA_SHIPPING_URL` | | `https://api-test.envia.com` | Shipping API base URL |
+| `ENVIA_QUERIES_URL` | | `https://queries-test.envia.com` | Queries API base URL |
 | `ENVIA_GEOCODES_URL` | | `https://geocodes.envia.com` | Geocodes API base URL |
 
-For sandbox testing, use `api-test.envia.com` and `queries-test.envia.com` (geocodes sandbox is down — use production).
+## Sandbox vs Production
+
+**The server defaults to Envia's sandbox environment.** This is intentional.
+
+The `envia_create_label` tool purchases real shipping labels — it costs money and is **not idempotent** (calling it twice creates two labels with different tracking numbers, charged twice). AI agents can trigger this tool multiple times during a conversation, and there is no undo. Defaulting to sandbox prevents accidental charges during development, testing, and experimentation.
+
+This follows industry best practice: [Supabase MCP](https://supabase.com/docs/guides/getting-started/mcp) recommends "never connect to production"; [Stripe](https://docs.stripe.com/keys) separates test/live keys; [Slack MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/slack) disables destructive operations by default.
+
+### Switching to production
+
+To use the live Envia API, set the URL environment variables to production hosts:
+
+```json
+{
+  "mcpServers": {
+    "envia": {
+      "command": "node",
+      "args": ["/path/to/envia-mcp/dist/index.js"],
+      "env": {
+        "ENVIA_API_KEY": "your-production-api-key",
+        "ENVIA_SHIPPING_URL": "https://api.envia.com",
+        "ENVIA_QUERIES_URL": "https://queries.envia.com"
+      }
+    }
+  }
+}
+```
+
+**Important notes:**
+- Sandbox and production use **separate API keys** — a sandbox key won't work on production and vice versa
+- Geocodes (`geocodes.envia.com`) always uses production — the sandbox geocodes endpoint is down (503)
+- The server logs `(sandbox)` or `(PRODUCTION)` on startup so you always know which environment you're hitting
 
 ---
 
