@@ -250,7 +250,7 @@ export function registerAllResources(server: McpServer): void {
   ];
 
   for (const resource of resources) {
-    server.resource(resource.name, resource.uri, { description: resource.description, mimeType: 'text/markdown' }, async () => ({
+    server.registerResource(resource.name, resource.uri, { description: resource.description, mimeType: 'text/markdown' }, async () => ({
       contents: [
         {
           uri: resource.uri,

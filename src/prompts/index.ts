@@ -8,10 +8,14 @@ import { z } from 'zod';
 
 export function registerAllPrompts(server: McpServer): void {
   // ─── Diagnose Shipment ───
-  server.prompt(
+  server.registerPrompt(
     'diagnose-shipment',
-    'Investigate a shipment\'s tracking status and identify any issues',
-    { tracking_number: z.string().describe('The tracking number to investigate') },
+    {
+      description: 'Investigate a shipment\'s tracking status and identify any issues',
+      argsSchema: {
+        tracking_number: z.string().describe('The tracking number to investigate'),
+      },
+    },
     async ({ tracking_number }) => ({
       messages: [
         {
@@ -40,16 +44,18 @@ Steps:
   );
 
   // ─── Compare Rates ───
-  server.prompt(
+  server.registerPrompt(
     'compare-rates',
-    'Quote all carriers for a route and compare price vs speed',
     {
-      origin_postal_code: z.string().describe('Origin 5-digit Mexican postal code'),
-      dest_postal_code: z.string().describe('Destination 5-digit Mexican postal code'),
-      weight_kg: z.string().describe('Package weight in kilograms'),
-      length_cm: z.string().describe('Package length in centimeters'),
-      width_cm: z.string().describe('Package width in centimeters'),
-      height_cm: z.string().describe('Package height in centimeters'),
+      description: 'Quote all carriers for a route and compare price vs speed',
+      argsSchema: {
+        origin_postal_code: z.string().describe('Origin 5-digit Mexican postal code'),
+        dest_postal_code: z.string().describe('Destination 5-digit Mexican postal code'),
+        weight_kg: z.string().describe('Package weight in kilograms'),
+        length_cm: z.string().describe('Package length in centimeters'),
+        width_cm: z.string().describe('Package width in centimeters'),
+        height_cm: z.string().describe('Package height in centimeters'),
+      },
     },
     async (args) => ({
       messages: [
@@ -80,10 +86,14 @@ Note: You'll need to provide full address fields for the quote. Use the postal c
   );
 
   // ─── Verify Address ───
-  server.prompt(
+  server.registerPrompt(
     'verify-address',
-    'Validate a Mexican postal code and return full address information',
-    { postal_code: z.string().describe('5-digit Mexican postal code to validate') },
+    {
+      description: 'Validate a Mexican postal code and return full address information',
+      argsSchema: {
+        postal_code: z.string().describe('5-digit Mexican postal code to validate'),
+      },
+    },
     async ({ postal_code }) => ({
       messages: [
         {

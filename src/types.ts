@@ -409,7 +409,7 @@ export type ApiError = z.infer<typeof ApiErrorSchema>;
 // ─── Shared field for response format ───
 
 const responseFormatField = z
-  .nativeEnum(ResponseFormat)
+  .enum([ResponseFormat.MARKDOWN, ResponseFormat.JSON])
   .default(ResponseFormat.MARKDOWN)
   .describe("Output format: 'markdown' for human-readable or 'json' for machine-readable");
 

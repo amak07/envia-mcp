@@ -17,13 +17,20 @@ import {
   DEFAULT_GEOCODES_URL,
 } from './constants.js';
 
+const apiKey = process.env.ENVIA_API_KEY;
+if (!apiKey) {
+  console.error('Error: ENVIA_API_KEY environment variable is required.');
+  console.error('Set it in your MCP server configuration or .env file.');
+  process.exit(1);
+}
+
 const server = new McpServer({
   name: 'envia-mcp-server',
   version: '0.1.0',
 });
 
 const client = new EnviaClient({
-  apiKey: process.env.ENVIA_API_KEY ?? '',
+  apiKey,
   shippingUrl: process.env.ENVIA_SHIPPING_URL ?? DEFAULT_SHIPPING_URL,
   queriesUrl: process.env.ENVIA_QUERIES_URL ?? DEFAULT_QUERIES_URL,
   geocodesUrl: process.env.ENVIA_GEOCODES_URL ?? DEFAULT_GEOCODES_URL,

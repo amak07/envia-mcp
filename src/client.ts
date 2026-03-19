@@ -174,7 +174,11 @@ export class EnviaClient {
       data: body,
       apiKey: this.config.apiKey,
     });
-    return response.data[0]!;
+    const item = response.data[0];
+    if (!item) {
+      throw new Error('Label API returned empty data array');
+    }
+    return item;
   }
 
   // ─── Tracking ───
@@ -212,7 +216,11 @@ export class EnviaClient {
       data: { carrier, trackingNumber },
       apiKey: this.config.apiKey,
     });
-    return response.data[0]!;
+    const item = response.data[0];
+    if (!item) {
+      throw new Error('Cancel API returned empty data array');
+    }
+    return item;
   }
 
   // ─── Address Validation (Geocodes API — no auth) ───

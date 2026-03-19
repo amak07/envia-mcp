@@ -11,7 +11,9 @@ export const DEFAULT_QUERIES_URL = 'https://queries.envia.com';
 export const DEFAULT_GEOCODES_URL = 'https://geocodes.envia.com';
 
 /** Response format for MCP tools — all data-returning tools support this */
-export enum ResponseFormat {
-  MARKDOWN = 'markdown',
-  JSON = 'json',
-}
+export const ResponseFormat = {
+  MARKDOWN: 'markdown',
+  JSON: 'json',
+} as const;
+
+export type ResponseFormat = (typeof ResponseFormat)[keyof typeof ResponseFormat];
