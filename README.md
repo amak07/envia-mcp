@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://envia.com/favicon.ico" alt="Envia logo" width="64" />
+  <img src="enviacom_logo.jpg" alt="Envia.com logo" width="128" />
 </p>
 
 <h1 align="center">envia-mcp</h1>
