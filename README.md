@@ -14,7 +14,7 @@
 <p align="center"><strong>MCP server + TypeScript client for the <a href="https://envia.com">Envia.com</a> shipping API.</strong></p>
 
 <p align="center">
-  Quote, label, track, and cancel shipments across <strong>120+ carriers in 8 countries</strong> — from AI agents or your own code.
+  Quote, label, track, and cancel shipments across <strong>150+ carriers in 16 countries</strong> — from AI agents or your own code.
 </p>
 
 ---
@@ -31,16 +31,31 @@
 
 ### Supported Countries
 
+#### Americas
+
 | Country | Code | Carriers | Notable Carriers |
 |---------|:----:|:--------:|-----------------|
 | Mexico | MX | 34 | DHL, FedEx, Estafeta, Paquetexpress, UPS |
 | United States | US | 33 | FedEx, UPS, USPS, DHL, Sendle, LSO |
 | Colombia | CO | 16 | FedEx, DHL, Coordinadora, Servientrega, TCC |
-| Argentina | AR | 12 | — |
+| Argentina | AR | 12 | Andreani, Correo Argentino, FedEx, DHL, OCA |
 | Brazil | BR | 11 | Correios, FedEx, DHL, Jadlog, Loggi |
-| Chile | CL | 10 | — |
-| Guatemala | GT | 7 | — |
-| Peru | PE | 1 | — |
+| Chile | CL | 10 | Chilexpress, Correos Chile, FedEx, DHL, Starken |
+| Guatemala | GT | 7 | Cargo Expreso, DHL, Telomando |
+| Canada | CA | 4 | Canada Post, Canpar, DHL, Purolator |
+| Uruguay | UY | 3 | DHL, Treggo |
+| Peru | PE | 1 | Olva |
+
+#### Europe, Asia & Oceania
+
+| Country | Code | Carriers | Notable Carriers |
+|---------|:----:|:--------:|-----------------|
+| Spain | ES | 16 | Correos, DHL, FedEx, GLS, SEUR, UPS |
+| India | IN | 9 | BlueDart, Delhivery, FedEx, Aramex, Xpressbees |
+| France | FR | 4 | Chronopost, Mondial Relay, UPS |
+| Australia | AU | 3 | Aramex, FedEx, Sendle |
+| Japan | JP | 1 | — |
+| China | CN | 1 | — |
 
 > Envia adds carriers and countries over time. Use `envia_get_carriers` to get the current list.
 
