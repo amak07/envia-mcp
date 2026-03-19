@@ -1,0 +1,29 @@
+{
+  "_meta": {
+    "testName": "03-postal-code-invalid",
+    "timestamp": "2026-03-17T18:16:43.346Z"
+  },
+  "status": 200,
+  "headers": {
+    "accept-ranges": "bytes",
+    "access-control-expose-headers": "WWW-Authenticate,Server-Authorization",
+    "age": "206",
+    "alt-svc": "h3=\":443\"; ma=86400",
+    "cache-control": "no-cache",
+    "cf-cache-status": "HIT",
+    "cf-ray": "9dddfd79acc4a0a0-QRO",
+    "connection": "keep-alive",
+    "content-length": "2",
+    "content-type": "application/json; charset=utf-8",
+    "date": "Tue, 17 Mar 2026 18:16:41 GMT",
+    "last-modified": "Tue, 17 Mar 2026 18:13:14 GMT",
+    "server": "cloudflare",
+    "set-cookie": "__cf_bm=C_l0DiiAYfP8Yp.sulrz2yvo5n.ujKytpVDndSrbwYg-1773771401.2217307-1.0.1.1-SKXSVzCZE0zoBzhRm3IQW4BqX188esCO0fZPF666jz6YKvUbwrAsRGjppUyeJ0YZKPpoQA50jCXa3w_1vv04p36FpgUs2DE_JnWqHClJ9.6yjSXiJOQfEKHm_J.cSzLw; HttpOnly; Secure; Path=/; Domain=envia.com; Expires=Tue, 17 Mar 2026 18:46:41 GMT",
+    "strict-transport-security": "max-age=0; includeSubDomains",
+    "vary": "origin, accept-encoding",
+    "via": "2.0 spaces-router (0c8eb837de5e)",
+    "x-content-type-options": "nosniff"
+  },
+  "data": [],
+  "responseTimeMs": 13
+}

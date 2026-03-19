@@ -1,0 +1,33 @@
+{
+  "_meta": {
+    "testName": "05-label-created",
+    "timestamp": "2026-03-17T19:18:50.939Z",
+    "endpoint": "POST /ship/generate/",
+    "requestSummary": "dhl/ground, MTY→CDMX, brake pads 3.5kg"
+  },
+  "meta": "generate",
+  "data": [
+    {
+      "carrier": "dhl",
+      "service": "ground",
+      "shipmentId": 168268,
+      "trackingNumber": "2456698904",
+      "folio": "",
+      "trackUrl": "https://test.envia.com/rastreo?label=2456698904&cntry_code=mx",
+      "label": "https://s3.us-east-2.amazonaws.com/envia-staging/uploads/dhl/2456698904464869b9a917a378c.pdf",
+      "packages": [
+        {
+          "trackingNumber": "2456698904",
+          "trackUrl": "https://test.envia.com/rastreo?label=2456698904&cntry_code=mx",
+          "content": "Juego de pastillas de freno",
+          "weight": 3.5,
+          "weightUnit": "KG"
+        }
+      ],
+      "additionalFiles": [],
+      "totalPrice": 22.92,
+      "currentBalance": 911.14,
+      "currency": "USD"
+    }
+  ]
+}

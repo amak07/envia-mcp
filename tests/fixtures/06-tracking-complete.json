@@ -1,0 +1,101 @@
+{
+  "_meta": {
+    "testName": "06-tracking-complete",
+    "timestamp": "2026-03-17T19:19:34.187Z",
+    "endpoint": "POST /ship/generaltrack/",
+    "requestSummary": "Track 2456699011 (dhl)"
+  },
+  "meta": "generaltrack",
+  "data": [
+    {
+      "company": "Refacciones Direct",
+      "companyId": 4648,
+      "carrier": "dhl",
+      "carrierId": 2,
+      "carrierDescription": "DHL",
+      "service": "ground",
+      "serviceDescription": "DHL Economy ",
+      "country": "MX",
+      "localeId": 1,
+      "trackingNumber": "2456699011",
+      "folio": null,
+      "cashOnDelivery": false,
+      "accountShipment": "TENDENCYS",
+      "trackUrl": "https://test.envia.com/rastreo?label=2456699011",
+      "trackUrlSite": "http://www.dhl.com/en/express/tracking.html?AWB=2456699011",
+      "status": "Created",
+      "statusColor": "#28a745",
+      "estimatedDelivery": "2026-03-18 23:59:00",
+      "pickupDate": null,
+      "shippedAt": null,
+      "deliveredAt": null,
+      "signedBy": null,
+      "informationDetail": null,
+      "createdAt": "2026-03-17 13:19:29",
+      "destination": {
+        "name": "Juan Perez Garcia",
+        "company": "-",
+        "email": "test@refaccionesdirect.com",
+        "phone": "5512345678",
+        "street": "Av. Alvaro Obregon",
+        "number": "123",
+        "district": "Roma Norte",
+        "city": "Ciudad de Mexico",
+        "state": "CMX",
+        "country": "MX",
+        "postalCode": "06700",
+        "branchInfo": null
+      },
+      "content": {
+        "tracking_number": "2456699011",
+        "status_parent_id": 1,
+        "parentStatusBackgroundColor": "#009FE3",
+        "parentStatusTextColor": "#008E96",
+        "status_translation_tag": "shipments.status.1",
+        "class_name": "secondary",
+        "status": "Created",
+        "content": "Kit de filtro de aceite",
+        "type": "box",
+        "length": 20,
+        "width": 15,
+        "height": 15,
+        "weight": 1.2,
+        "totalWeight": 1.2,
+        "weightUnit": "KG",
+        "lengthUnit": "CM",
+        "originalRequest": true
+      },
+      "eventHistory": [],
+      "companyInfo": {
+        "name": "Refacciones Direct",
+        "color": null,
+        "logo": null
+      },
+      "additionalFolios": [],
+      "podFile": null,
+      "podEvidences": [],
+      "packages": [
+        {
+          "tracking_number": "2456699011",
+          "status_parent_id": 1,
+          "parentStatusBackgroundColor": "#009FE3",
+          "parentStatusTextColor": "#008E96",
+          "status_translation_tag": "shipments.status.1",
+          "class_name": "secondary",
+          "status": "Created",
+          "content": "Kit de filtro de aceite",
+          "type": "box",
+          "length": 20,
+          "width": 15,
+          "height": 15,
+          "weight": 1.2,
+          "totalWeight": 1.2,
+          "weightUnit": "KG",
+          "lengthUnit": "CM",
+          "originalRequest": true
+        }
+      ],
+      "parentTrackingNumber": "2456699011"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<evaluation>
+  <qa_pair>
+    <question>For postal code 64000 in Mexico, what is the 2-digit state code returned by the geocodes API?</question>
+    <answer>NL</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>How many active services does Estafeta offer for Mexico according to the Queries API? Respond with a number.</question>
+    <answer>8</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Is postal code 99999 a valid Mexican postal code according to the Envia geocodes API? Respond "yes" or "no".</question>
+    <answer>no</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>What is the 3-digit state code for postal code 06700 (Roma Norte, CDMX) according to the geocodes API?</question>
+    <answer>CMX</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>How many total carriers are available in Mexico according to the Envia Queries API? Respond with a number.</question>
+    <answer>34</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>For postal code 97000 in Mexico (Mérida), what state name does the geocodes API return?</question>
+    <answer>Yucatán</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>How many services does DHL offer for Mexico according to the Queries API? Respond with a number.</question>
+    <answer>31</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>What is the timezone for postal code 44100 (Guadalajara) according to the Envia geocodes API?</question>
+    <answer>America/Mexico_City</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Get shipping quotes from postal code 64000 (Monterrey) to 06700 (CDMX) for a 2kg box (30x20x15 cm). Which carrier offers the cheapest option? Respond with the carrier string (e.g., "dhl").</question>
+    <answer>[dynamic — depends on current rates]</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>For postal code 01000 in Mexico, how many neighborhoods (suburbs/colonias) does the geocodes API return? Respond with a number.</question>
+    <answer>[dynamic — depends on geocodes data]</answer>
+  </qa_pair>
+</evaluation>

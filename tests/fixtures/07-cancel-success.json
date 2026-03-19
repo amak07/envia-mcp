@@ -1,0 +1,22 @@
+{
+  "_meta": {
+    "testName": "07-cancel-success",
+    "timestamp": "2026-03-17T19:19:49.371Z",
+    "endpoint": "POST /ship/cancel/",
+    "requestSummary": "Cancel 2456699044 (dhl)"
+  },
+  "meta": "cancel",
+  "data": [
+    {
+      "carrier": "dhl",
+      "service": "ground",
+      "trackingNumber": "2456699044",
+      "folio": null,
+      "ecommerce": null,
+      "refundedAmount": 0,
+      "currency": "",
+      "balanceReturned": 0,
+      "balanceReturnDate": null
+    }
+  ]
+}

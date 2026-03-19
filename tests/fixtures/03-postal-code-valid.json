@@ -1,0 +1,67 @@
+{
+  "_meta": {
+    "testName": "03-postal-code-valid",
+    "timestamp": "2026-03-17T18:16:43.329Z"
+  },
+  "status": 200,
+  "headers": {
+    "access-control-expose-headers": "WWW-Authenticate,Server-Authorization",
+    "age": "4305",
+    "alt-svc": "h3=\":443\"; ma=86400",
+    "cache-control": "no-cache",
+    "cf-cache-status": "HIT",
+    "cf-ray": "9dddfd797c05a0a0-QRO",
+    "connection": "keep-alive",
+    "content-encoding": "br",
+    "content-type": "application/json; charset=utf-8",
+    "date": "Tue, 17 Mar 2026 18:16:41 GMT",
+    "last-modified": "Tue, 17 Mar 2026 17:04:55 GMT",
+    "server": "cloudflare",
+    "set-cookie": "__cf_bm=ijrUb_Zmy89u4zEc11rH8qFS3DfXtM3PjfiRF5j1LB4-1773771401.1976163-1.0.1.1-ybV6qv2dpmCAaa96Y0aFrlSc8e3CfRa0FEF9Z96ZnKB0DFTmNvMs1XdTHgsBUGaBH2EnVyZ2q18kBRhJaJJvAda0jIzm_LKG9EB2cyBuQMAgmOIHlmht7VWHRkITNf8w; HttpOnly; Secure; Path=/; Domain=envia.com; Expires=Tue, 17 Mar 2026 18:46:41 GMT",
+    "strict-transport-security": "max-age=0; includeSubDomains",
+    "transfer-encoding": "chunked",
+    "vary": "origin, accept-encoding",
+    "via": "2.0 spaces-router (0c8eb837de5e)",
+    "x-content-type-options": "nosniff"
+  },
+  "data": [
+    {
+      "zip_code": "06700",
+      "country": {
+        "name": "México",
+        "code": "MX"
+      },
+      "state": {
+        "name": "Ciudad de Mexico",
+        "iso_code": "MX-CMX",
+        "code": {
+          "1digit": null,
+          "2digit": "CX",
+          "3digit": "CMX"
+        }
+      },
+      "locality": "Ciudad de México",
+      "additional_info": {
+        "street": null
+      },
+      "suburbs": ["Roma Norte"],
+      "coordinates": {
+        "latitude": "19.418299",
+        "longitude": "-99.164766"
+      },
+      "info": {
+        "stat": "09015",
+        "stat_8digit": "09015000",
+        "time_zone": "America/Mexico_City",
+        "utc": "-06:00"
+      },
+      "regions": {
+        "region_1": "Ciudad de Mexico",
+        "region_2": "Cuauhtémoc",
+        "region_3": "",
+        "region_4": ""
+      }
+    }
+  ],
+  "responseTimeMs": 37
+}
