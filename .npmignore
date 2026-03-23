@@ -1,0 +1,17 @@
+# Source (dist/ has compiled output)
+src/
+tests/
+vitest.config.ts
+tsconfig.json
+
+# Dev/CI files
+.beads/
+.github/
+.env
+.env.example
+evaluation.xml
+AGENTS.md
+CLAUDE.md
+
+# Test fixtures
+tests/
