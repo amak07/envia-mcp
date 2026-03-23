@@ -20,3 +20,4 @@ Thumbs.db
 # Debug
 npm-debug.log*
 .npmrc
+mcp-publisher.exe
