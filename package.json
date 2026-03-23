@@ -1,6 +1,7 @@
 {
   "name": "envia-mcp",
   "version": "0.2.0",
+  "mcpName": "io.github.amak07/envia",
   "description": "MCP server and client library for Envia.com shipping API — quote, label, track, and cancel shipments across 170+ carriers in 18 countries",
   "type": "module",
   "main": "dist/index.js",

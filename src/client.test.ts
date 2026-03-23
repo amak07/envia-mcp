@@ -1307,6 +1307,44 @@ describe('EnviaClient.schedulePickup', () => {
     expect(result.date).toBe('2026-03-25');
     expect(result.status).toBe('scheduled');
   });
+
+  it('includes origin address fields in the request body', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(pickupApiResponse));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    await client.schedulePickup({
+      origin: sampleOrigin,
+      carrier: 'fedex',
+      trackingNumbers: ['9876543210'],
+      date: '2026-04-01',
+      timeFrom: 10,
+      timeTo: 14,
+      totalWeight: 5,
+      totalPackages: 2,
+      instructions: 'Ring doorbell',
+    });
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+
+    expect(body.origin).toEqual(
+      expect.objectContaining({
+        name: sampleOrigin.name,
+        street: sampleOrigin.street,
+        number: sampleOrigin.number,
+        city: sampleOrigin.city,
+        state: sampleOrigin.state,
+        country: sampleOrigin.country,
+        postalCode: sampleOrigin.postalCode,
+        phone: sampleOrigin.phone,
+        phone_code: sampleOrigin.phone_code,
+        email: sampleOrigin.email,
+      }),
+    );
+    expect(body.carrier).toBe('fedex');
+    expect(body.trackingNumbers).toEqual(['9876543210']);
+    expect(body.instructions).toBe('Ring doorbell');
+  });
 });
 
 // ─── classifyHsCode ──────────────────────────────────────────────────────────

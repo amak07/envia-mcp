@@ -1,0 +1,43 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.amak07/envia",
+  "description": "MCP server + TypeScript client for the Envia.com shipping API — 11 tools for quoting, labeling, tracking, pickups, HS codes, and more across 170+ carriers in 18 countries.",
+  "repository": {
+    "url": "https://github.com/amak07/envia-mcp",
+    "source": "github"
+  },
+  "version": "0.2.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "envia-mcp",
+      "version": "0.2.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "Envia API key (get from https://envia.com)",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true,
+          "name": "ENVIA_API_KEY"
+        },
+        {
+          "description": "Shipping API URL (default: sandbox https://api-test.envia.com)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "ENVIA_SHIPPING_URL"
+        },
+        {
+          "description": "Queries API URL (default: sandbox https://queries-test.envia.com)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "ENVIA_QUERIES_URL"
+        }
+      ]
+    }
+  ]
+}

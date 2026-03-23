@@ -902,6 +902,7 @@ export const EnviaSchedulePickupInputSchema = z.object({
   origin_postal_code: z.string().describe('5-digit postal code'),
   origin_phone: z.string().describe('10-digit phone number'),
   origin_email: z.string().describe('Email address'),
+  origin_country: z.string().optional().default('MX').describe('Origin country code (default: MX)'),
 
   carrier: z.string().describe('Carrier string (e.g., "dhl", "fedex", "estafeta")'),
   tracking_numbers: z.string().describe('Comma-separated tracking numbers to pick up'),

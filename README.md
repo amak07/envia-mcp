@@ -128,7 +128,7 @@ const tracking = await client.trackShipments(['TRACK123']);
 
 ## MCP Tools
 
-The server exposes **7 tools** that AI agents can call:
+The server exposes **11 tools** that AI agents can call:
 
 | Tool | Description | Destructive |
 |------|-------------|:-----------:|
@@ -139,12 +139,16 @@ The server exposes **7 tools** that AI agents can call:
 | `envia_validate_zipcode` | Validate a postal code and get address info | |
 | `envia_get_carriers` | List available carriers for a country | |
 | `envia_get_services` | List services for a specific carrier | |
+| `envia_shipment_history` | Get shipment history for a given month/year | |
+| `envia_schedule_pickup` | Schedule a carrier pickup | Yes |
+| `envia_classify_hscode` | Classify product description into HS code for customs | |
+| `envia_lookup_city` | Look up cities by name, get postal codes (no auth) | |
 
 All tools return both **Markdown** (for display) and **structured data** (for programmatic use).
 
 ## MCP Resources
 
-6 documentation resources provide AI agents with context about the Envia API:
+7 documentation resources provide AI agents with context about the Envia API:
 
 | URI | Content |
 |-----|---------|
@@ -154,16 +158,18 @@ All tools return both **Markdown** (for display) and **structured data** (for pr
 | `envia://docs/rate-response` | Price breakdown, MXN currency, additional charges |
 | `envia://docs/label-response` | USD currency, permanent label URLs, no idempotency |
 | `envia://docs/errors` | Error codes and how to handle them |
+| `envia://docs/international` | International shipping guide: HS codes, commercial invoices, currency, duties |
 
 ## MCP Prompts
 
-3 workflow prompts guide agents through multi-step tasks:
+4 workflow prompts guide agents through multi-step tasks:
 
 | Prompt | What It Does |
 |--------|-------------|
 | `diagnose-shipment` | Investigate tracking status, identify stuck/failed shipments |
 | `compare-rates` | Quote all carriers for a route, compare price vs speed |
 | `verify-address` | Validate a postal code, return neighborhoods and coordinates |
+| `prepare-international-shipment` | Step-by-step international shipment workflow |
 
 ---
 
@@ -187,6 +193,12 @@ const client = new EnviaClient({ apiKey, shippingUrl, queriesUrl, geocodesUrl })
 | `validateZipCode(postalCode, countryCode?)` | `PostalCodeItem[]` | Validate postal code (no auth needed) |
 | `getCarriers(countryCode?)` | `Carrier[]` | List available carriers |
 | `getServices(carrier, countryCode?)` | `CarrierService[]` | List services for a carrier |
+| `getShipmentHistory(month, year)` | `ShipmentHistoryItem[]` | Get shipment history for a month |
+| `schedulePickup(request)` | `PickupResult` | Schedule a carrier pickup |
+| `classifyHsCode(description, options?)` | `HsCodeClassification` | Classify product into HS code |
+| `generateCommercialInvoice(request)` | `CommercialInvoiceResult` | Generate commercial invoice for customs |
+| `lookupCity(city, countryCode?)` | `CityLookupItem[]` | Look up cities by name, get postal codes |
+| `getAvailableCarriers(countryCode?, international?)` | `AvailableCarrier[]` | List carriers with availability details |
 
 ---
 
@@ -251,25 +263,87 @@ To use the live Envia API, set the URL environment variables to production hosts
 
 ---
 
+## Currency
+
+The Envia API defaults to USD when the `currency` field is omitted from requests. This is a common source of confusion for Latin American users who expect MXN (or their local currency). The official `@envia/envia-mcp` server inherits this behavior, silently quoting and charging in USD.
+
+**Our implementation defaults to MXN.** You can override this globally or per call:
+
+```typescript
+// Default: MXN
+const client = new EnviaClient({ apiKey, shippingUrl, queriesUrl, geocodesUrl });
+
+// Override globally (e.g., for Colombia)
+const client = new EnviaClient({
+  apiKey,
+  shippingUrl,
+  queriesUrl,
+  geocodesUrl,
+  defaultCurrency: 'COP',
+});
+
+// Override per call via the currency parameter
+const quotes = await client.getQuotesAllCarriers(origin, destination, packages, {
+  currency: 'USD',
+});
+```
+
+The MCP server also defaults to MXN. Set `ENVIA_DEFAULT_CURRENCY` to change it.
+
+---
+
+## HTTP Features
+
+The client includes production-grade HTTP handling:
+
+- **SSRF protection** — hostname allowlist restricts requests to known Envia API domains only
+- **Retry with exponential backoff** — failed requests retry up to 3 times with increasing delays
+- **`Retry-After` header support** — respects server-requested cooldown periods before retrying
+
+---
+
+## Comparison with @envia/envia-mcp
+
+Envia maintains an official MCP server at [`@envia/envia-mcp`](https://www.npmjs.com/package/@envia/envia-mcp). Here is a factual comparison:
+
+| Feature | envia-mcp (this project) | @envia/envia-mcp (official) |
+|---------|--------------------------|----------------------------|
+| Typed TypeScript client library | Yes | No |
+| Configurable currency default | Yes (MXN default) | No (USD default) |
+| Zod response validation | Yes | No |
+| Structured MCP output (data + Markdown) | Yes | No |
+| Sandbox geocodes fallback | Yes | No |
+| SSRF protection (hostname allowlist) | Yes | No |
+| Retry with exponential backoff | Yes | No |
+| Official Envia branding | No | Yes |
+| Sandbox by default | Yes | Yes |
+| 10+ MCP tools | Yes (11) | Yes |
+
+**Known issues in the official server:**
+- Missing `settings` object on label creation causes HTTP 400 errors
+- Defaults to USD instead of MXN, which is unexpected for the primary market (Mexico)
+
+---
+
 ## Development
 
 ```bash
 # Clone and install
 git clone https://github.com/amak07/envia-mcp.git
 cd envia-mcp
-npm install
+npm.cmd install
 
 # Build
-npm run build
+npm.cmd run build
 
 # Type check
-npm run typecheck
+npm.cmd run typecheck
 
 # Run tests (30 unit tests, mocked API)
-npm run test:run
+npm.cmd run test:run
 
 # Dev mode (watch + restart)
-npm run dev
+npm.cmd run dev
 ```
 
 ### Project Structure
