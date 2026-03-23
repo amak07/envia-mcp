@@ -12,6 +12,10 @@ import { registerCancelTool } from './cancel.js';
 import { registerValidateZipcodeTool } from './validate-zipcode.js';
 import { registerGetCarriersTool } from './get-carriers.js';
 import { registerGetServicesTool } from './get-services.js';
+import { registerShipmentHistoryTool } from './shipment-history.js';
+import { registerSchedulePickupTool } from './schedule-pickup.js';
+import { registerClassifyHscodeTool } from './classify-hscode.js';
+import { registerLookupCityTool } from './lookup-city.js';
 
 export function registerAllTools(server: McpServer, client: EnviaClient): void {
   registerQuoteTool(server, client);
@@ -21,4 +25,8 @@ export function registerAllTools(server: McpServer, client: EnviaClient): void {
   registerValidateZipcodeTool(server, client);
   registerGetCarriersTool(server, client);
   registerGetServicesTool(server, client);
+  registerShipmentHistoryTool(server, client);
+  registerSchedulePickupTool(server, client);
+  registerClassifyHscodeTool(server, client);
+  registerLookupCityTool(server, client);
 }

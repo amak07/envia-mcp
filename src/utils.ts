@@ -3,7 +3,13 @@
  * Adapted from exploration api-client.ts — simplified for production use.
  */
 
-import { CHARACTER_LIMIT } from './constants.js';
+import {
+  CHARACTER_LIMIT,
+  ALLOWED_HOSTS,
+  DEFAULT_MAX_RETRIES,
+  DEFAULT_RETRY_BASE_DELAY_MS,
+} from './constants.js';
+import type { RetryOptions } from './types.js';
 
 /** HTTP error with status code for handleApiError */
 export class ApiHttpError extends Error {
@@ -16,9 +22,13 @@ export class ApiHttpError extends Error {
   }
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Centralized HTTP request function for Envia API calls.
- * Uses native fetch with 30s timeout.
+ * Features: 30s timeout, SSRF hostname allowlist, exponential backoff retry on 429/5xx.
  */
 export async function makeApiRequest<T>(options: {
   baseUrl: string;
@@ -27,8 +37,12 @@ export async function makeApiRequest<T>(options: {
   data?: unknown;
   params?: Record<string, string>;
   apiKey?: string;
+  retry?: RetryOptions;
+  skipHostCheck?: boolean;
 }): Promise<T> {
-  const { baseUrl, endpoint, method = 'GET', data, params, apiKey } = options;
+  const { baseUrl, endpoint, method = 'GET', data, params, apiKey, skipHostCheck } = options;
+  const maxRetries = options.retry?.maxRetries ?? DEFAULT_MAX_RETRIES;
+  const baseDelay = options.retry?.baseDelayMs ?? DEFAULT_RETRY_BASE_DELAY_MS;
 
   let url = `${baseUrl}${endpoint}`;
   if (params) {
@@ -36,7 +50,24 @@ export async function makeApiRequest<T>(options: {
     url += `?${searchParams.toString()}`;
   }
 
-  const headers: Record<string, string> = {};
+  // SSRF prevention: only allow requests to known Envia API domains
+  if (!skipHostCheck) {
+    try {
+      const parsedUrl = new URL(url);
+      if (!ALLOWED_HOSTS.has(parsedUrl.hostname)) {
+        throw new Error(
+          `Blocked: request to unauthorized host "${parsedUrl.hostname}". Only Envia API domains are allowed.`,
+        );
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith('Blocked:')) throw e;
+      throw new Error('Blocked: invalid URL.');
+    }
+  }
+
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+  };
   if (apiKey) {
     headers['Authorization'] = `Bearer ${apiKey}`;
   }
@@ -44,30 +75,61 @@ export async function makeApiRequest<T>(options: {
     headers['Content-Type'] = 'application/json';
   }
 
-  const init: RequestInit = {
-    method,
-    headers,
-    signal: AbortSignal.timeout(30_000),
-  };
-  if (data !== undefined && method === 'POST') {
-    init.body = JSON.stringify(data);
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const init: RequestInit = {
+        method,
+        headers,
+        signal: AbortSignal.timeout(30_000),
+      };
+      if (data !== undefined && method === 'POST') {
+        init.body = JSON.stringify(data);
+      }
+
+      const res = await fetch(url, init);
+      const text = await res.text();
+
+      let parsed: unknown;
+      try {
+        parsed = text ? JSON.parse(text) : null;
+      } catch {
+        parsed = { _raw: text };
+      }
+
+      if (res.ok) {
+        return parsed as T;
+      }
+
+      // Decide whether to retry
+      const retryable = res.status === 429 || res.status >= 500;
+      if (retryable && attempt < maxRetries) {
+        // Respect Retry-After header on 429 (seconds format only; ignore HTTP-date)
+        const retryAfter = res.headers.get('Retry-After');
+        const parsedRetryAfter = retryAfter ? parseInt(retryAfter, 10) : NaN;
+        const delay = Number.isFinite(parsedRetryAfter)
+          ? parsedRetryAfter * 1000
+          : baseDelay * Math.pow(2, attempt);
+        await sleep(delay);
+        continue;
+      }
+
+      throw new ApiHttpError(res.status, parsed);
+    } catch (e) {
+      if (e instanceof ApiHttpError) throw e;
+      lastError = e;
+      if (attempt < maxRetries) {
+        await sleep(baseDelay * Math.pow(2, attempt));
+        continue;
+      }
+    }
   }
 
-  const res = await fetch(url, init);
-  const text = await res.text();
-
-  let parsed: unknown;
-  try {
-    parsed = text ? JSON.parse(text) : null;
-  } catch {
-    parsed = { _raw: text };
-  }
-
-  if (!res.ok) {
-    throw new ApiHttpError(res.status, parsed);
-  }
-
-  return parsed as T;
+  // All retries exhausted with a network-level error
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`Network error after ${maxRetries + 1} attempts.`);
 }
 
 /**
@@ -78,8 +140,14 @@ export function handleApiError(error: unknown): string {
     switch (error.status) {
       case 400:
         return 'Error: Missing or invalid required field. Check carrier, address, and package fields.';
+      case 401:
+        return 'Error: Authentication failed. Verify your ENVIA_API_KEY is valid and not expired.';
+      case 402:
+        return 'Error: Insufficient balance. Top up your Envia prepaid balance before creating labels.';
       case 403:
-        return 'Error: Invalid API key. Verify ENVIA_API_KEY is set correctly.';
+        return 'Error: Forbidden. Your API key does not have permission for this operation.';
+      case 422:
+        return 'Error: Validation failed. One or more fields are invalid. Check the response for details.';
       case 429:
         return 'Error: Rate limit exceeded. Wait before making more requests.';
       default:

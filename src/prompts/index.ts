@@ -116,4 +116,40 @@ Steps:
       ],
     }),
   );
+
+  // ─── Prepare International Shipment ───
+  server.registerPrompt(
+    'prepare-international-shipment',
+    {
+      description: 'Step-by-step guide for preparing an international shipment',
+      argsSchema: {
+        origin_country: z.string().describe('Origin country code (e.g. "MX")'),
+        destination_country: z.string().describe('Destination country code (e.g. "US")'),
+        product_description: z.string().describe('Description of the product being shipped'),
+      },
+    },
+    async (args) => ({
+      messages: [
+        {
+          role: 'user' as const,
+          content: {
+            type: 'text' as const,
+            text: `Prepare an international shipment from ${args.origin_country} to ${args.destination_country} for: "${args.product_description}".
+
+Steps:
+1. **Classify the product** — Use envia_classify_hscode with the product description to get the correct HS code for customs
+2. **Get shipping rates** — Use envia_get_shipping_rates (envia_quote) to compare carrier options for the ${args.origin_country} → ${args.destination_country} route. Present a comparison table with carrier, service, delivery estimate, and price
+3. **Create the label** — Once the user selects a carrier/service, use envia_create_label with the HS code and customs information included
+4. **Schedule pickup** — Use envia_schedule_pickup to arrange carrier pickup at the origin address
+
+Important notes:
+- International shipments require HS codes for customs clearance
+- Commercial invoices may be needed — use the client library's generateCommercialInvoice() method
+- Confirm duties payment preference with the user: sender, recipient, or envia_guaranteed
+- Currency defaults to MXN but can be configured per-request`,
+          },
+        },
+      ],
+    }),
+  );
 }

@@ -8,14 +8,14 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 const OVERVIEW_CONTENT = `# Envia.com API Overview
 
 ## What Is Envia?
-Envia is a Mexican shipping aggregator that provides a single API to access 34+ carriers (DHL, FedEx, Estafeta, Paquetexpress, and more). One API key, one integration, access to all carriers.
+Envia is a shipping aggregator that provides a single API to access 170+ carriers across 18 countries (DHL, FedEx, Estafeta, Paquetexpress, UPS, and more). One API key, one integration, access to all carriers.
 
 ## Three Separate API Hosts
 
 | API | Base URL | Auth Required | Purpose |
 |-----|----------|---------------|---------|
-| **Shipping API** | \`api.envia.com\` | Yes (Bearer token) | Quotes, labels, tracking, cancellation |
-| **Queries API** | \`queries.envia.com\` | Yes (Bearer token) | Carrier lists, service lists, countries, states |
+| **Shipping API** | \`api.envia.com\` | Yes (Bearer token) | Quotes, labels, tracking, cancellation, pickups, HS codes |
+| **Queries API** | \`queries.envia.com\` | Yes (Bearer token) | Carrier lists, service lists, countries, states, city lookup |
 | **Geocodes API** | \`geocodes.envia.com\` | **No** | Postal code validation, neighborhood lookup |
 
 All three share the same API key (for Shipping + Queries), but are hosted on different domains.
@@ -35,6 +35,34 @@ All three share the same API key (for Shipping + Queries), but are hosted on dif
 - Free platform access
 - Pay-per-label from prepaid balance (denominated in USD)
 - Quote prices are in MXN, but label charges are in **USD**
+
+## Available Tools (11)
+
+### Core Shipping
+- **envia_quote** — Get shipping rates from all carriers for a route
+- **envia_create_label** — Purchase a shipping label (charges USD balance)
+- **envia_track** — Track one or more shipments by tracking number
+- **envia_cancel** — Cancel a shipment and request refund
+
+### Reference Data
+- **envia_validate_zipcode** — Validate a postal code and get address info
+- **envia_get_carriers** — List available carriers for a country
+- **envia_get_services** — List services for a specific carrier
+- **envia_lookup_city** — Look up city by name and get postal codes
+
+### Shipment Management
+- **envia_shipment_history** — List shipments created in a given month
+- **envia_schedule_pickup** — Schedule a carrier pickup
+
+### International
+- **envia_classify_hscode** — Classify a product into an HS code for customs
+
+## International Workflow
+For international shipments, follow this sequence:
+1. \`envia_classify_hscode\` — Get the HS code for the product
+2. Create a commercial invoice (client library: \`client.generateCommercialInvoice()\`)
+3. \`envia_create_label\` — Create the shipping label with customs data
+4. \`envia_schedule_pickup\` — Schedule carrier pickup
 `;
 
 const ADDRESS_MX_CONTENT = `# Mexican Address Format for Envia API
@@ -76,7 +104,11 @@ Common codes: NL (Nuevo León), CX/CMX (CDMX), JA/JAL (Jalisco), BC (Baja Califo
 const CARRIERS_CONTENT = `# Envia Carrier Reference
 
 ## Overview
-Mexico has **34 carriers** available through Envia. Each carrier has different service levels, weight limits, and pickup capabilities.
+Envia provides access to **170+ carriers across 18 countries**. Each carrier has different service levels, weight limits, and pickup capabilities.
+
+## Carrier Data
+- \`getCarriers()\` returns operational metadata: endpoints, weight limits, pickup windows, service counts
+- \`getAvailableCarriers()\` provides domestic/international filtering and simplified carrier info
 
 ## Major Carriers
 | Carrier | Endpoint String | Services | Box Weight Limit |
@@ -174,7 +206,10 @@ const ERRORS_CONTENT = `# Envia API Error Reference
 | Status | Meaning | How to Handle |
 |--------|---------|---------------|
 | 400 | Missing/invalid required field | Check carrier, address, and package fields |
+| 401 | Authentication failed | Verify ENVIA_API_KEY is set and valid for the environment (sandbox vs production) |
+| 402 | Insufficient balance | Top up your Envia prepaid balance before creating labels |
 | 403 | Invalid API key | Verify ENVIA_API_KEY is set correctly |
+| 422 | Validation error | Check request body against API schema — a required field may be missing or malformed |
 | 429 | Rate limit exceeded | Wait before making more requests |
 | 5xx | Server error | Retry after a few moments |
 
@@ -204,6 +239,30 @@ const ERRORS_CONTENT = `# Envia API Error Reference
 \`\`\`
 `;
 
+const INTERNATIONAL_CONTENT = `# International Shipping with Envia
+
+## HS Codes
+Use \`envia_classify_hscode\` to classify a product description into the correct Harmonized System (HS) code before creating international shipments. The API returns the HS code, description, and applicable duty rates.
+
+## Commercial Invoices
+For customs documentation, use the client library method \`client.generateCommercialInvoice()\` to generate a commercial invoice PDF. This is required for most international shipments and must include:
+- Sender and recipient details
+- HS codes for each item
+- Item descriptions, quantities, and values
+- Country of origin
+
+## Currency
+The Envia API defaults to **USD** when no currency is specified. This package defaults to **MXN** to match the most common use case (domestic Mexico shipping). Currency is configurable:
+- At the client level via \`defaultCurrency\` config option
+- Per-request by passing the currency parameter
+
+## Duties Payment
+International shipments require specifying who pays duties/taxes:
+- **sender** — shipper pays all duties and taxes
+- **recipient** — receiver pays on delivery (DDU)
+- **envia_guaranteed** — Envia guarantees duty payment (DDP)
+`;
+
 export function registerAllResources(server: McpServer): void {
   const resources: Array<{
     name: string;
@@ -226,7 +285,7 @@ export function registerAllResources(server: McpServer): void {
     {
       name: 'Carrier Reference',
       uri: 'envia://docs/carriers',
-      description: '34 carriers, service counts, weight limits, pickup windows',
+      description: '170+ carriers across 18 countries, service counts, weight limits, pickup windows',
       content: CARRIERS_CONTENT,
     },
     {
@@ -244,8 +303,14 @@ export function registerAllResources(server: McpServer): void {
     {
       name: 'Error Reference',
       uri: 'envia://docs/errors',
-      description: 'Error codes 400, 1115, 1125, and how to handle them',
+      description: 'Error codes 400, 401, 402, 422, 1115, 1125, and how to handle them',
       content: ERRORS_CONTENT,
+    },
+    {
+      name: 'International Shipping',
+      uri: 'envia://docs/international',
+      description: 'HS codes, commercial invoices, currency configuration, duties payment',
+      content: INTERNATIONAL_CONTENT,
     },
   ];
 

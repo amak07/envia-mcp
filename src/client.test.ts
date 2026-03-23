@@ -483,6 +483,7 @@ const TEST_CONFIG = {
   shippingUrl: 'https://api-test.envia.com',
   queriesUrl: 'https://queries-test.envia.com',
   geocodesUrl: 'https://geocodes-test.envia.com',
+  retry: { maxRetries: 0, baseDelayMs: 0 }, // Disable retries in tests for speed
 };
 
 const sampleOrigin: EnviaAddress = {
@@ -1077,5 +1078,435 @@ describe('Error handling', () => {
     const err = await client.getCarriers('MX').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ApiHttpError);
     expect((err as ApiHttpError).status).toBe(500);
+  });
+});
+
+// ─── Currency Configuration ──────────────────────────────────────────────────
+
+describe('Currency configuration', () => {
+  it('defaults to MXN when no currency config or override', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(rateApiResponse));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    await client.getQuotes(sampleOrigin, sampleDestination, samplePackages, 'dhl');
+
+    const body = JSON.parse((mockFetch.mock.calls[0] as [string, RequestInit])[1].body as string);
+    expect(body.settings.currency).toBe('MXN');
+  });
+
+  it('uses defaultCurrency from config when set', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(rateApiResponse));
+    const client = new EnviaClient({ ...TEST_CONFIG, defaultCurrency: 'COP' });
+
+    await client.getQuotes(sampleOrigin, sampleDestination, samplePackages, 'dhl');
+
+    const body = JSON.parse((mockFetch.mock.calls[0] as [string, RequestInit])[1].body as string);
+    expect(body.settings.currency).toBe('COP');
+  });
+
+  it('per-call currency overrides config defaultCurrency', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(rateApiResponse));
+    const client = new EnviaClient({ ...TEST_CONFIG, defaultCurrency: 'COP' });
+
+    await client.getQuotes(sampleOrigin, sampleDestination, samplePackages, 'dhl', 'BRL');
+
+    const body = JSON.parse((mockFetch.mock.calls[0] as [string, RequestInit])[1].body as string);
+    expect(body.settings.currency).toBe('BRL');
+  });
+
+  it('applies currency to createLabel as well', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(labelApiResponse));
+    const client = new EnviaClient({ ...TEST_CONFIG, defaultCurrency: 'USD' });
+
+    await client.createLabel(sampleLabelOrigin, sampleLabelDestination, sampleLabelPackages, 'dhl', 'ground');
+
+    const body = JSON.parse((mockFetch.mock.calls[0] as [string, RequestInit])[1].body as string);
+    expect(body.settings.currency).toBe('USD');
+  });
+});
+
+// ─── SSRF Protection ─────────────────────────────────────────────────────────
+
+describe('SSRF hostname allowlist', () => {
+  it('blocks requests to unauthorized hosts', async () => {
+    const client = new EnviaClient({
+      ...TEST_CONFIG,
+      queriesUrl: 'https://evil.example.com',
+    });
+
+    await expect(client.getCarriers('MX')).rejects.toThrow(/Blocked.*unauthorized host/);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('allows requests to known Envia domains', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(carriersApiResponse));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    const carriers = await client.getCarriers('MX');
+    expect(carriers).toHaveLength(3);
+  });
+});
+
+// ─── Retry Logic ─────────────────────────────────────────────────────────────
+
+describe('Retry with exponential backoff', () => {
+  it('retries on 429 and succeeds on second attempt', async () => {
+    mockFetch
+      .mockResolvedValueOnce(mockResponse({ error: 'Too Many Requests' }, 429))
+      .mockResolvedValueOnce(mockResponse(carriersApiResponse));
+
+    const client = new EnviaClient({
+      ...TEST_CONFIG,
+      retry: { maxRetries: 2, baseDelayMs: 1 },
+    });
+
+    const carriers = await client.getCarriers('MX');
+    expect(carriers).toHaveLength(3);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries on 503 and succeeds on second attempt', async () => {
+    mockFetch
+      .mockResolvedValueOnce(mockResponse({ error: 'Service Unavailable' }, 503))
+      .mockResolvedValueOnce(mockResponse(carriersApiResponse));
+
+    const client = new EnviaClient({
+      ...TEST_CONFIG,
+      retry: { maxRetries: 2, baseDelayMs: 1 },
+    });
+
+    const carriers = await client.getCarriers('MX');
+    expect(carriers).toHaveLength(3);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('exhausts retries and throws ApiHttpError', async () => {
+    mockFetch
+      .mockResolvedValueOnce(mockResponse({ error: 'Server Error' }, 500))
+      .mockResolvedValueOnce(mockResponse({ error: 'Server Error' }, 500))
+      .mockResolvedValueOnce(mockResponse({ error: 'Server Error' }, 500));
+
+    const client = new EnviaClient({
+      ...TEST_CONFIG,
+      retry: { maxRetries: 2, baseDelayMs: 1 },
+    });
+
+    const err = await client.getCarriers('MX').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiHttpError);
+    expect((err as ApiHttpError).status).toBe(500);
+    expect(mockFetch).toHaveBeenCalledTimes(3); // initial + 2 retries
+  });
+
+  it('does not retry on 400 errors', async () => {
+    mockFetch.mockResolvedValueOnce(
+      mockResponse({ error: 'Bad Request' }, 400),
+    );
+
+    const client = new EnviaClient({
+      ...TEST_CONFIG,
+      retry: { maxRetries: 2, baseDelayMs: 1 },
+    });
+
+    const err = await client.getCarriers('MX').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiHttpError);
+    expect(mockFetch).toHaveBeenCalledOnce();
+  });
+});
+
+// ─── getShipmentHistory ──────────────────────────────────────────────────────
+
+describe('EnviaClient.getShipmentHistory', () => {
+  const historyApiResponse = {
+    data: [
+      {
+        trackingNumber: '2456698904',
+        carrier: 'dhl',
+        service: 'ground',
+        status: 'Delivered',
+        originCity: 'Monterrey',
+        destinationCity: 'CDMX',
+        totalPrice: 404.87,
+        currency: 'MXN',
+        label: 'https://s3.amazonaws.com/label.pdf',
+        createdAt: '2026-03-10 10:00:00',
+      },
+    ],
+  };
+
+  it('sends GET to /guide/{MM}/{YYYY} with auth', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(historyApiResponse));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    const items = await client.getShipmentHistory(3, 2026);
+
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://queries-test.envia.com/guide/03/2026');
+    expect(init.method).toBe('GET');
+    expect((init.headers as Record<string, string>)['Authorization']).toBe('Bearer test-api-key-123');
+
+    expect(items).toHaveLength(1);
+    expect(items[0]!.trackingNumber).toBe('2456698904');
+    expect(items[0]!.carrier).toBe('dhl');
+    expect(items[0]!.status).toBe('Delivered');
+  });
+
+  it('zero-pads single-digit months', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ data: [] }));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    await client.getShipmentHistory(1, 2026);
+
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/guide/01/2026');
+  });
+
+  it('returns empty array when no shipments', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ data: null }));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    const items = await client.getShipmentHistory(12, 2025);
+    expect(items).toEqual([]);
+  });
+});
+
+// ─── schedulePickup ──────────────────────────────────────────────────────────
+
+describe('EnviaClient.schedulePickup', () => {
+  const pickupApiResponse = {
+    data: {
+      confirmation: 'PU-12345',
+      carrier: 'dhl',
+      date: '2026-03-25',
+      timeFrom: 9,
+      timeTo: 17,
+      status: 'scheduled',
+    },
+  };
+
+  it('sends POST to /ship/pickup/ with correct body', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(pickupApiResponse));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    const result = await client.schedulePickup({
+      origin: sampleOrigin,
+      carrier: 'dhl',
+      trackingNumbers: ['2456698904'],
+      date: '2026-03-25',
+      timeFrom: 9,
+      timeTo: 17,
+      totalWeight: 3.5,
+      totalPackages: 1,
+    });
+
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://api-test.envia.com/ship/pickup/');
+    expect(init.method).toBe('POST');
+
+    expect(result.confirmation).toBe('PU-12345');
+    expect(result.carrier).toBe('dhl');
+    expect(result.date).toBe('2026-03-25');
+    expect(result.status).toBe('scheduled');
+  });
+});
+
+// ─── classifyHsCode ──────────────────────────────────────────────────────────
+
+describe('EnviaClient.classifyHsCode', () => {
+  const hsCodeApiResponse = {
+    data: {
+      hsCode: '8708.30',
+      description: 'Brakes and servo-brakes; parts thereof',
+      confidenceScore: 0.92,
+      alternatives: ['8708.99', '8708.40'],
+    },
+  };
+
+  it('sends POST to /utils/classify-hscode with description and options', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(hsCodeApiResponse));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    const result = await client.classifyHsCode('ceramic brake pads', {
+      shipToCountries: ['US', 'CA'],
+      includeAlternatives: true,
+    });
+
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://api-test.envia.com/utils/classify-hscode');
+    expect(init.method).toBe('POST');
+
+    const body = JSON.parse(init.body as string);
+    expect(body.description).toBe('ceramic brake pads');
+    expect(body.shipToCountries).toEqual(['US', 'CA']);
+
+    expect(result.hsCode).toBe('8708.30');
+    expect(result.confidenceScore).toBe(0.92);
+    expect(result.alternatives).toHaveLength(2);
+  });
+
+  it('works with description only (no options)', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(hsCodeApiResponse));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    const result = await client.classifyHsCode('brake pads');
+
+    const body = JSON.parse((mockFetch.mock.calls[0] as [string, RequestInit])[1].body as string);
+    expect(body.description).toBe('brake pads');
+    expect(result.hsCode).toBe('8708.30');
+  });
+});
+
+// ─── generateCommercialInvoice ───────────────────────────────────────────────
+
+describe('EnviaClient.generateCommercialInvoice', () => {
+  const invoiceApiResponse = {
+    data: {
+      invoiceNumber: 'INV-2026-001',
+      invoiceUrl: 'https://s3.amazonaws.com/invoice.pdf',
+      invoiceId: 'inv-abc123',
+    },
+  };
+
+  it('sends POST to /ship/commercial-invoice with full request', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(invoiceApiResponse));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    const result = await client.generateCommercialInvoice({
+      origin: sampleOrigin,
+      destination: sampleDestination,
+      carrier: 'dhl',
+      packages: [
+        {
+          ...samplePackages[0]!,
+          items: [
+            {
+              description: 'Ceramic brake pads',
+              hsCode: '8708.30',
+              quantity: 2,
+              price: 450.0,
+              countryOfManufacture: 'MX',
+            },
+          ],
+        },
+      ],
+      customsSettings: {
+        dutiesPaymentEntity: 'sender',
+        exportReason: 'commercial',
+      },
+    });
+
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://api-test.envia.com/ship/commercial-invoice');
+    expect(init.method).toBe('POST');
+
+    expect(result.invoiceNumber).toBe('INV-2026-001');
+    expect(result.invoiceUrl).toContain('s3.amazonaws.com');
+    expect(result.invoiceId).toBe('inv-abc123');
+  });
+});
+
+// ─── lookupCity ──────────────────────────────────────────────────────────────
+
+describe('EnviaClient.lookupCity', () => {
+  const cityApiResponse = [
+    {
+      city: 'Monterrey',
+      state: 'Nuevo Leon',
+      postalCodes: ['64000', '64010', '64020'],
+      regions: { region_1: 'Nuevo Leon', region_2: 'Monterrey' },
+    },
+  ];
+
+  it('sends GET to /locate/{country}/{city} without auth', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(cityApiResponse));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    const items = await client.lookupCity('Monterrey', 'MX');
+
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://geocodes-test.envia.com/locate/MX/Monterrey');
+    expect(init.method).toBe('GET');
+    expect((init.headers as Record<string, string>)['Authorization']).toBeUndefined();
+
+    expect(items).toHaveLength(1);
+    expect(items[0]!.city).toBe('Monterrey');
+    expect(items[0]!.state).toBe('Nuevo Leon');
+    expect(items[0]!.postalCodes).toContain('64000');
+  });
+
+  it('defaults country code to MX', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(cityApiResponse));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    await client.lookupCity('Monterrey');
+
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/locate/MX/Monterrey');
+  });
+
+  it('falls back to production geocodes on 5xx', async () => {
+    mockFetch
+      .mockResolvedValueOnce(mockResponse({ error: 'Service Unavailable' }, 503))
+      .mockResolvedValueOnce(mockResponse(cityApiResponse));
+
+    const client = new EnviaClient(TEST_CONFIG);
+    const items = await client.lookupCity('Monterrey', 'MX');
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    const [fallbackUrl] = mockFetch.mock.calls[1] as [string, RequestInit];
+    expect(fallbackUrl).toBe('https://geocodes.envia.com/locate/MX/Monterrey');
+    expect(items).toHaveLength(1);
+  });
+});
+
+// ─── getAvailableCarriers ────────────────────────────────────────────────────
+
+describe('EnviaClient.getAvailableCarriers', () => {
+  const availableCarriersResponse = {
+    data: [
+      { name: 'DHL', description: 'DHL Express', country_code: 'MX', logo: 'dhl.svg' },
+      { name: 'FedEx', description: 'FedEx Mexico', country_code: 'MX', logo: 'fedex.svg' },
+    ],
+  };
+
+  it('sends GET to /available-carrier/{country}/{flag} for domestic', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(availableCarriersResponse));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    const carriers = await client.getAvailableCarriers('MX', false);
+
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://queries-test.envia.com/available-carrier/MX/0');
+    expect(init.method).toBe('GET');
+
+    expect(carriers).toHaveLength(2);
+    expect(carriers[0]!.name).toBe('DHL');
+  });
+
+  it('sends flag=1 for international carriers', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(availableCarriersResponse));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    await client.getAvailableCarriers('MX', true);
+
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/available-carrier/MX/1');
+  });
+
+  it('defaults to MX domestic', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(availableCarriersResponse));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    await client.getAvailableCarriers();
+
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/available-carrier/MX/0');
+  });
+
+  it('returns empty array when no data', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ data: null }));
+    const client = new EnviaClient(TEST_CONFIG);
+
+    const carriers = await client.getAvailableCarriers();
+    expect(carriers).toEqual([]);
   });
 });

@@ -15,12 +15,22 @@ import { ResponseFormat } from './constants.js';
 // 1. CLIENT TYPES
 // ════════════════════════════════════════════════════════════════════════════════
 
+/** Options for retry behavior on transient errors (429, 5xx) */
+export interface RetryOptions {
+  maxRetries?: number;
+  baseDelayMs?: number;
+}
+
 /** Configuration for the Envia client */
 export interface EnviaClientConfig {
   apiKey: string;
   shippingUrl: string;
   queriesUrl: string;
   geocodesUrl: string;
+  /** Default currency for rate quotes and labels (default: 'MXN'). API defaults to USD if omitted. */
+  defaultCurrency?: string;
+  /** Retry options for transient errors (default: 3 retries, 500ms base delay) */
+  retry?: RetryOptions;
 }
 
 /** Address for rate quote requests (phone_code: "MX") */
@@ -72,6 +82,49 @@ export interface EnviaLabelPackage extends EnviaPackage {
 export interface LabelOptions {
   printFormat?: 'PDF' | 'ZPL';
   printSize?: 'STOCK_4X6' | 'PAPER_8.5X11';
+}
+
+/** Request body for scheduling a carrier pickup */
+export interface PickupRequest {
+  origin: EnviaAddress;
+  carrier: string;
+  trackingNumbers: string[];
+  date: string;
+  timeFrom: number;
+  timeTo: number;
+  totalWeight: number;
+  totalPackages: number;
+  instructions?: string;
+}
+
+/** Options for HS code classification */
+export interface HsCodeOptions {
+  hsCodeProvided?: string;
+  shipToCountries?: string[];
+  includeAlternatives?: boolean;
+}
+
+/** Request body for generating a commercial invoice */
+export interface CommercialInvoiceRequest {
+  origin: EnviaAddress;
+  destination: EnviaAddress;
+  carrier: string;
+  packages: CommercialInvoicePackage[];
+  customsSettings: {
+    dutiesPaymentEntity: string;
+    exportReason: string;
+  };
+}
+
+/** Package with customs items for commercial invoices */
+export interface CommercialInvoicePackage extends EnviaPackage {
+  items: {
+    description: string;
+    hsCode: string;
+    quantity: number;
+    price: number;
+    countryOfManufacture: string;
+  }[];
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -388,6 +441,91 @@ export const CancellationResponseSchema = z.object({
   meta: z.literal('cancel'),
   data: z.array(CancellationItemSchema),
 });
+
+// ─── Shipment History (Queries API) ───
+
+export const ShipmentHistoryItemSchema = z
+  .object({
+    trackingNumber: z.string(),
+    carrier: z.string(),
+    service: z.string().optional(),
+    status: z.string(),
+    originCity: z.string().optional(),
+    destinationCity: z.string().optional(),
+    totalPrice: z.number().optional(),
+    currency: z.string().optional(),
+    label: z.string().optional(),
+    createdAt: z.string().optional(),
+  })
+  .passthrough();
+
+export type ShipmentHistoryItem = z.infer<typeof ShipmentHistoryItemSchema>;
+
+// ─── Pickup (Shipping API) ───
+
+export const PickupResultSchema = z
+  .object({
+    confirmation: z.string().optional(),
+    carrier: z.string(),
+    date: z.string(),
+    timeFrom: z.number(),
+    timeTo: z.number(),
+    status: z.string().optional(),
+  })
+  .passthrough();
+
+export type PickupResult = z.infer<typeof PickupResultSchema>;
+
+// ─── HS Code Classification (Shipping API) ───
+
+export const HsCodeClassificationSchema = z
+  .object({
+    hsCode: z.string(),
+    description: z.string().optional(),
+    confidenceScore: z.number().optional(),
+    alternatives: z.array(z.string()).optional(),
+  })
+  .passthrough();
+
+export type HsCodeClassification = z.infer<typeof HsCodeClassificationSchema>;
+
+// ─── Commercial Invoice (Shipping API) ───
+
+export const CommercialInvoiceResultSchema = z
+  .object({
+    invoiceNumber: z.string().optional(),
+    invoiceUrl: z.string().optional(),
+    invoiceId: z.string().optional(),
+  })
+  .passthrough();
+
+export type CommercialInvoiceResult = z.infer<typeof CommercialInvoiceResultSchema>;
+
+// ─── City Lookup (Geocodes API) ───
+
+export const CityLookupItemSchema = z
+  .object({
+    city: z.string(),
+    state: z.string().optional(),
+    postalCodes: z.array(z.string()).optional(),
+    regions: z.record(z.string()).optional(),
+  })
+  .passthrough();
+
+export type CityLookupItem = z.infer<typeof CityLookupItemSchema>;
+
+// ─── Available Carriers (Queries API) ───
+
+export const AvailableCarrierSchema = z
+  .object({
+    name: z.string(),
+    description: z.string().optional(),
+    country_code: z.string(),
+    logo: z.string().optional(),
+  })
+  .passthrough();
+
+export type AvailableCarrier = z.infer<typeof AvailableCarrierSchema>;
 
 // ─── Error Response ───
 
@@ -718,3 +856,119 @@ export const EnviaGetServicesOutputSchema = z.object({
 });
 
 export type EnviaGetServicesOutput = z.infer<typeof EnviaGetServicesOutputSchema>;
+
+// ─── envia_shipment_history ───
+
+export const EnviaShipmentHistoryInputSchema = z.object({
+  month: z.number().int().min(1).max(12).describe('Month (1-12)'),
+  year: z.number().int().min(2020).describe('Year (2020 or later)'),
+  response_format: responseFormatField,
+}).strict();
+
+export type EnviaShipmentHistoryInput = z.infer<typeof EnviaShipmentHistoryInputSchema>;
+
+export const EnviaShipmentHistoryOutputSchema = z.object({
+  total: z.number().describe('Total number of shipments found'),
+  month: z.number(),
+  year: z.number(),
+  shipments: z.array(
+    z.object({
+      tracking_number: z.string(),
+      carrier: z.string(),
+      service: z.string().optional(),
+      status: z.string(),
+      origin_city: z.string().optional(),
+      destination_city: z.string().optional(),
+      total_price: z.number().optional(),
+      currency: z.string().optional(),
+      label_url: z.string().optional(),
+      created_at: z.string().optional(),
+    }),
+  ),
+});
+
+export type EnviaShipmentHistoryOutput = z.infer<typeof EnviaShipmentHistoryOutputSchema>;
+
+// ─── envia_schedule_pickup ───
+
+export const EnviaSchedulePickupInputSchema = z.object({
+  origin_name: z.string().describe('Sender contact name'),
+  origin_company: z.string().optional().describe('Sender company name'),
+  origin_street: z.string().describe('Street name'),
+  origin_street_number: z.string().describe('Exterior/street number'),
+  origin_neighborhood: z.string().describe('Colonia / neighborhood'),
+  origin_city: z.string().describe('City or municipio'),
+  origin_state: z.string().describe('2-letter state code'),
+  origin_postal_code: z.string().describe('5-digit postal code'),
+  origin_phone: z.string().describe('10-digit phone number'),
+  origin_email: z.string().describe('Email address'),
+
+  carrier: z.string().describe('Carrier string (e.g., "dhl", "fedex", "estafeta")'),
+  tracking_numbers: z.string().describe('Comma-separated tracking numbers to pick up'),
+  date: z.string().describe('Pickup date in YYYY-MM-DD format'),
+  time_from: z.number().int().min(0).max(23).describe('Pickup window start hour (0-23)'),
+  time_to: z.number().int().min(0).max(23).describe('Pickup window end hour (0-23)'),
+  total_weight: z.number().describe('Total weight of all packages in kg'),
+  total_packages: z.number().int().min(1).describe('Total number of packages'),
+  instructions: z.string().optional().describe('Special pickup instructions (optional)'),
+
+  response_format: responseFormatField,
+}).strict();
+
+export type EnviaSchedulePickupInput = z.infer<typeof EnviaSchedulePickupInputSchema>;
+
+export const EnviaSchedulePickupOutputSchema = z.object({
+  confirmation: z.string().optional(),
+  carrier: z.string(),
+  date: z.string(),
+  time_from: z.number(),
+  time_to: z.number(),
+  status: z.string().optional(),
+});
+
+export type EnviaSchedulePickupOutput = z.infer<typeof EnviaSchedulePickupOutputSchema>;
+
+// ─── envia_classify_hscode ───
+
+export const EnviaClassifyHscodeInputSchema = z.object({
+  description: z.string().describe('Product description to classify (e.g., "ceramic brake pads for automobiles")'),
+  destination_countries: z.string().optional().describe('Comma-separated destination country codes (e.g., "US,CA")'),
+  include_alternatives: z.boolean().optional().default(true).describe('Include alternative HS codes (default: true)'),
+  response_format: responseFormatField,
+}).strict();
+
+export type EnviaClassifyHscodeInput = z.infer<typeof EnviaClassifyHscodeInputSchema>;
+
+export const EnviaClassifyHscodeOutputSchema = z.object({
+  hs_code: z.string(),
+  description: z.string().optional(),
+  confidence_score: z.number().optional(),
+  alternatives: z.array(z.string()).optional(),
+});
+
+export type EnviaClassifyHscodeOutput = z.infer<typeof EnviaClassifyHscodeOutputSchema>;
+
+// ─── envia_lookup_city ───
+
+export const EnviaLookupCityInputSchema = z.object({
+  city: z.string().describe('City name to search for (e.g., "Monterrey", "Guadalajara")'),
+  country_code: z.string().optional().default('MX').describe('Country code (default: MX)'),
+  response_format: responseFormatField,
+}).strict();
+
+export type EnviaLookupCityInput = z.infer<typeof EnviaLookupCityInputSchema>;
+
+export const EnviaLookupCityOutputSchema = z.object({
+  total: z.number().describe('Number of matching cities'),
+  city_query: z.string(),
+  cities: z.array(
+    z.object({
+      city: z.string(),
+      state: z.string().optional(),
+      postal_codes: z.array(z.string()).optional(),
+      regions: z.record(z.string()).optional(),
+    }),
+  ),
+});
+
+export type EnviaLookupCityOutput = z.infer<typeof EnviaLookupCityOutputSchema>;
